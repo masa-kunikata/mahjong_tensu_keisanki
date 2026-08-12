@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>符計算 / 点数早見表</title>
+<style>
+  :root{
+    --paper:#fbfaf6; --ink:#1b1b1a; --grid:#b9b7ad; --shade:#ececE4;
+    --tsumo:#6d6a60; --mark:#ffdc2e; --pen:#c62026; --ctrl:#1b1b1a;
+    --rowmark:#fff4c2;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;padding:20px 14px 48px;background:#5a5f57;
+    font-family:"Yu Gothic","Hiragino Sans","Noto Sans JP","Meiryo",sans-serif;color:var(--ink);}
+  .sheet{max-width:1080px;margin:0 auto;background:var(--paper);padding:20px 22px 26px;
+    border-radius:3px;box-shadow:0 10px 40px rgba(0,0,0,.35);}
+
+  /* calculator */
+  .calc{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px;align-items:start;}
+  .col{display:flex;flex-direction:column;gap:12px;}
+  .cgrp{border:1px solid var(--grid);border-radius:4px;overflow:hidden;background:#fff;}
+  .cgrp h2{font-size:11px;letter-spacing:.1em;margin:0;padding:5px 8px;background:var(--shade);
+    border-bottom:1px solid var(--grid);}
+  .cgrp .body{padding:7px;display:flex;flex-direction:column;gap:5px;}
+  .item{display:flex;align-items:stretch;gap:4px;}
+  .item .add{flex:1;display:flex;justify-content:space-between;align-items:center;gap:6px;
+    border:1px solid var(--grid);background:#fff;border-radius:3px;padding:6px 8px;cursor:pointer;
+    font-family:inherit;font-size:12.5px;color:var(--ink);line-height:1;text-align:left;
+    transition:background .1s,border-color .1s;}
+  .item .add:hover{border-color:var(--ink);background:#fdfbe9;}
+  .item .add em{font-style:normal;font-weight:700;color:#8a877c;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .item.active .add{background:#fff2c2;border-color:var(--pen);}
+  .item.active .add em{color:var(--pen);}
+  .item .cnt{min-width:30px;display:flex;align-items:center;justify-content:center;font-size:12px;
+    font-weight:700;color:var(--pen);font-variant-numeric:tabular-nums;}
+  .item.zero .cnt{color:#c9c7bd;}
+  .item .sub{width:26px;border:1px solid var(--grid);background:#fff;border-radius:3px;cursor:pointer;
+    font-size:15px;line-height:1;color:#8a877c;font-family:inherit;}
+  .item .sub:hover{border-color:var(--ink);color:var(--ink);}
+  .item.zero .sub{opacity:.35;pointer-events:none;}
+  .tog{display:flex;flex-wrap:wrap;gap:5px;}
+  .tog button{border:1px solid var(--grid);background:#fff;border-radius:3px;padding:6px 8px;cursor:pointer;
+    font-family:inherit;font-size:12px;color:var(--ink);line-height:1;transition:background .1s,border-color .1s;}
+  .tog button:hover{border-color:var(--ink);}
+  .tog button.on{background:var(--ctrl);color:#fff;border-color:var(--ctrl);}
+  .tog button em{font-style:normal;color:#b9b7ad;font-size:11px;margin-left:3px;}
+  .tog button.on em{color:#d7d5c8;}
+
+  /* result + lookup */
+  /* result: left=符, right=selected han */
+  .result{position:relative;display:grid;grid-template-columns:1fr 1fr;margin:0 0 18px;
+    border:1px solid #2a2a28;border-radius:4px;background:#fff;overflow:hidden;}
+  .half{padding:12px 16px;}
+  .fu-half{display:flex;gap:18px;border-right:1px solid var(--grid);}
+  .fu-main{flex-shrink:0;display:flex;flex-direction:column;justify-content:center;}
+  .fu-main .line{display:flex;align-items:baseline;gap:4px;}
+  .fu-main .n{font-size:40px;font-weight:800;color:var(--pen);font-variant-numeric:tabular-nums;line-height:1;
+    font-family:"Yu Mincho","Hiragino Mincho ProN",serif;}
+  .fu-main .u{font-size:16px;font-weight:700;}
+  .fu-main .sum{font-size:12px;color:#8a877c;margin-top:5px;}
+  .brk{flex:1;display:flex;flex-direction:column;justify-content:center;font-size:12.5px;min-width:150px;}
+  .brk .bl{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dotted var(--grid);padding:3px 0;}
+  .brk .bl:last-child{border-bottom:0;}
+  .brk .bl .v{font-weight:700;color:#55534a;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .han-half{display:flex;flex-direction:column;justify-content:center;padding-right:72px;}
+  .han-half .hh-hint{font-size:12.5px;color:#8a877c;}
+  .han-half .hh-lab{font-size:10px;letter-spacing:.14em;color:#8a877c;margin-bottom:3px;}
+  .han-half .hh-top{display:flex;align-items:baseline;gap:8px;}
+  .han-half .hh-big{font-size:30px;font-weight:800;color:var(--ink);line-height:1;
+    font-family:"Yu Mincho","Hiragino Mincho ProN",serif;}
+  .han-half .hh-role{font-size:13px;font-weight:700;color:#55534a;}
+  .han-half .hh-pt{font-size:14px;margin-top:6px;color:#55534a;}
+  .han-half .hh-pt .pt{font-weight:800;color:var(--pen);font-variant-numeric:tabular-nums;}
+  .reset{position:absolute;top:8px;right:10px;z-index:2;border:1px solid var(--grid);background:#fff;
+    border-radius:3px;padding:5px 11px;cursor:pointer;font-family:inherit;font-size:11px;color:var(--ink);}
+  .reset:hover{border-color:var(--pen);color:var(--pen);}
+  @media (max-width:680px){.result{grid-template-columns:1fr;}
+    .fu-half{border-right:0;border-bottom:1px solid var(--grid);}
+    .han-half{padding-right:16px;}}
+
+  /* tables */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table.main{border-collapse:collapse;width:100%;min-width:760px;}
+  table.main th,table.main td{border:1px solid var(--grid);text-align:center;
+    font-variant-numeric:tabular-nums;padding:5px 4px;}
+  table.main thead .side{background:var(--shade);font-size:11px;padding:5px;}
+  table.main thead .hn{background:#f4f3ec;font-size:11px;font-weight:700;color:#44423a;width:8.2%;}
+  table.main .fucol{background:var(--shade);font-weight:800;font-size:14px;width:44px;}
+  table.main td .r{display:block;font-weight:700;font-size:13px;line-height:1.15;}
+  table.main td .t{display:block;font-size:10px;color:var(--tsumo);line-height:1.1;margin-top:1px;}
+  table.main td.man{font-weight:700;color:#333;background:#f7f6ef;}
+  table.main td.na{color:#b3b1a6;}
+  .edge{border-left:2px solid #2a2a28!important;}
+  table.main tr.rowhit td,table.main tr.rowhit th{background:var(--rowmark);}
+  table.main tr.rowhit td.man{background:#fdeeb0;}
+  table.main tr.rowhit .fucol{background:var(--mark);box-shadow:inset 0 0 0 2px var(--pen);}
+  /* clickable header cells */
+  th.pick{cursor:pointer;}
+  th.pick:hover{outline:2px solid var(--pen);outline-offset:-2px;background:#fdfbe9;}
+  th.thhit{background:var(--mark)!important;color:var(--ink)!important;box-shadow:inset 0 0 0 3px var(--pen);}
+  td.cellhit{background:var(--mark)!important;box-shadow:inset 0 0 0 3px var(--pen)!important;}
+  td.cellhit .t{color:#7a3a12!important;}
+
+  table.fixed{border-collapse:collapse;width:100%;min-width:760px;margin-top:14px;}
+  table.fixed th,table.fixed td{border:1px solid var(--grid);text-align:center;
+    font-variant-numeric:tabular-nums;padding:5px 4px;font-size:12px;width:8.2%;}
+  table.fixed thead th{background:var(--shade);font-size:10.5px;}
+  table.fixed .han-row td{font-size:9.5px;color:#8a877c;background:#f7f6ef;}
+  table.fixed .midlab{background:var(--ctrl);color:#fff;font-weight:700;font-size:11px;width:44px;}
+  table.fixed td .r{display:block;font-weight:800;font-size:13px;}
+  table.fixed td .t{display:block;font-size:10px;color:var(--tsumo);}
+
+  table.main.collapsed tr.hifu{display:none;}
+  .toggle70{display:block;width:100%;margin-top:-1px;padding:7px 10px;cursor:pointer;
+    border:1px solid var(--grid);border-top:0;background:#f4f3ec;color:#55534a;
+    font-family:inherit;font-size:12px;letter-spacing:.04em;border-radius:0 0 3px 3px;
+    transition:background .1s;}
+  .toggle70:hover{background:#eceadf;color:var(--ink);}
+
+  .foot{font-size:10.5px;color:#8a877c;margin-top:12px;line-height:1.7;}
+  @media (max-width:680px){.calc{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="calc">
+    <div class="col">
+      <div class="cgrp"><h2>上がり方</h2><div class="body"><div class="tog" id="agari"></div></div></div>
+      <div class="cgrp"><h2>特例（押すと固定）</h2><div class="body"><div class="tog" id="special"></div></div></div>
+    </div>
+    <div class="cgrp"><h2>面子の符（中張）</h2><div class="body" id="melds-c"></div></div>
+    <div class="cgrp"><h2>面子の符（么九）</h2><div class="body" id="melds-t"></div></div>
+    <div class="col">
+      <div class="cgrp"><h2>頭の符</h2><div class="body" id="head"></div></div>
+      <div class="cgrp"><h2>待ちの符</h2><div class="body" id="wait"></div></div>
+    </div>
+  </div>
+
+  <div class="result">
+    <button class="reset" id="reset">リセット</button>
+    <div class="half fu-half">
+      <div class="fu-main">
+        <div class="line"><span class="n" id="fu-total">30</span><span class="u">符</span></div>
+        <div class="sum" id="fu-sum">（合計 30符）</div>
+      </div>
+      <div class="brk" id="breakdown"></div>
+    </div>
+    <div class="half han-half">
+      <div class="hh-hint" id="han-hint">上の見出し（翻）をクリックして選択</div>
+      <div id="han-body" style="display:none">
+        <div class="hh-lab">選択したハン</div>
+        <div class="hh-top"><span class="hh-big" id="han-big"></span><span class="hh-role" id="han-role"></span></div>
+        <div class="hh-pt" id="han-pt"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap"><table class="main collapsed" id="main"></table></div>
+  <button class="toggle70" id="toggle70">70符以上を表示 ▼</button>
+  <div class="tbl-wrap"><table class="fixed" id="fixed"></table></div>
+
+  <p class="foot">
+    副底20＋各要素を合計し10符単位で切り上げ。平和ツモ（20符）・七対子（25符）は上の特例ボタンで固定。<br>
+    親：下段＝子1人の支払い ／ 子：下段＝子の払い／親の払い。5翻の列＝満貫（点数は下段の表を参照）。
+  </p>
+</div>
+
+<script>
+const FU=[20,25,30,40,50,60,70,80,90,100,110];
+const ceil100=n=>Math.ceil(n/100)*100;
+const fmt=n=>n.toLocaleString('ja-JP');
+function calc(fu,han,role){
+  if((fu===20||fu===25)&&han===1) return null;
+  const base=fu*Math.pow(2,2+han);
+  if(base>=2000) return 'man';
+  if(role==='dealer') return {ron:ceil100(base*6),tsumo:fmt(ceil100(base*2))};
+  return {ron:ceil100(base*4),tsumo:fmt(ceil100(base*1))+'/'+fmt(ceil100(base*2))};
+}
+function cellHTML(v){
+  if(v===null) return '<span class="r na">—</span>';
+  if(v==='man') return '満貫';
+  return `<span class="r">${fmt(v.ron)}</span><span class="t">${v.tsumo}</span>`;
+}
+const RANK={mangan:['満貫','5翻'],hane:['跳満','6～7翻'],bai:['倍満','8～10翻'],sanbai:['三倍満','11翻～'],yakuman:['役満','役満']};
+const FIXED={mangan:{dealer:{r:12000,t:'4000'},child:{r:8000,t:'2000/4000'}},
+  hane:{dealer:{r:18000,t:'6000'},child:{r:12000,t:'3000/6000'}},
+  bai:{dealer:{r:24000,t:'8000'},child:{r:16000,t:'4000/8000'}},
+  sanbai:{dealer:{r:36000,t:'12000'},child:{r:24000,t:'6000/12000'}},
+  yakuman:{dealer:{r:48000,t:'16000'},child:{r:32000,t:'8000/16000'}}};
+
+/* build main mirror table (cells clickable) */
+(function(){
+  let h='<thead><tr><th class="side" colspan="5">親家（下段＝子1人の支払い）</th>'
+    +'<th class="fucol" rowspan="2">符</th>'
+    +'<th class="side" colspan="5">子家（下段＝子／親）</th></tr><tr>';
+  [5,4,3,2,1].forEach(n=>{const han=n===5?'mangan':n;
+    h+=`<th class="hn pick" data-role="dealer" data-han="${han}">${n}翻</th>`;});
+  [1,2,3,4,5].forEach((n,i)=>{const han=n===5?'mangan':n;
+    h+=`<th class="hn pick${i===0?' edge':''}" data-role="child" data-han="${han}">${n}翻</th>`;});
+  h+='</tr></thead><tbody>';
+  FU.forEach(fu=>{
+    h+=`<tr data-fu="${fu}" class="${fu>=70?'hifu':''}">`;
+    [5,4,3,2,1].forEach(han=>{
+      if(han===5) h+=`<td class="man" data-role="dealer" data-han="mangan">満貫</td>`;
+      else h+=`<td data-role="dealer" data-han="${han}">${cellHTML(calc(fu,han,'dealer'))}</td>`;
+    });
+    h+=`<td class="fucol">${fu}</td>`;
+    [1,2,3,4,5].forEach((han,i)=>{const e=i===0?' edge':'';
+      if(han===5) h+=`<td class="man${e}" data-role="child" data-han="mangan">満貫</td>`;
+      else h+=`<td class="${e}" data-role="child" data-han="${han}">${cellHTML(calc(fu,han,'child'))}</td>`;});
+    h+='</tr>';
+  });
+  document.getElementById('main').innerHTML=h+'</tbody>';
+})();
+
+/* build bottom fixed table (cells clickable) */
+(function(){
+  const dO=['yakuman','sanbai','bai','hane','mangan'], cO=['mangan','hane','bai','sanbai','yakuman'];
+  let h='<thead><tr>';
+  dO.forEach(k=>h+=`<th class="pick" data-role="dealer" data-rank="${k}">${RANK[k][0]}</th>`);
+  h+='<th rowspan="3" class="midlab">5翻<br>以上</th>';
+  cO.forEach(k=>h+=`<th class="pick" data-role="child" data-rank="${k}">${RANK[k][0]}</th>`);
+  h+='</tr><tr class="han-row">';
+  dO.forEach(k=>h+=`<td>${RANK[k][1]}</td>`); cO.forEach(k=>h+=`<td>${RANK[k][1]}</td>`);
+  h+='</tr><tr>';
+  dO.forEach(k=>{const v=FIXED[k].dealer;h+=`<td data-role="dealer" data-rank="${k}"><span class="r">${fmt(v.r)}</span><span class="t">${v.t}</span></td>`;});
+  cO.forEach((k,i)=>{const v=FIXED[k].child;h+=`<td class="${i===0?'edge':''}" data-role="child" data-rank="${k}"><span class="r">${fmt(v.r)}</span><span class="t">${v.t}</span></td>`;});
+  document.getElementById('fixed').innerHTML=h+'</tr></thead>';
+})();
+
+/* ===== calculator data ===== */
+const AGARI=[{k:'menzenRon',l:'面前ロン',fu:10},{k:'ron',l:'ロン(鳴き)',fu:0},{k:'kuipinfu',l:'食い平和',fu:10},{k:'tsumo',l:'ツモ',fu:2}];
+const MELDS=[{id:'mk_c',l:'明刻 中張',fu:2},{id:'mk_t',l:'明刻 么九',fu:4},
+  {id:'ak_c',l:'暗刻 中張',fu:4},{id:'ak_t',l:'暗刻 么九',fu:8},
+  {id:'mg_c',l:'明槓 中張',fu:8},{id:'mg_t',l:'明槓 么九',fu:16},
+  {id:'ag_c',l:'暗槓 中張',fu:16},{id:'ag_t',l:'暗槓 么九',fu:32}];
+const HEAD=[{id:'y1',l:'役牌の頭',fu:2},{id:'y2',l:'連風牌の頭',fu:4}];
+const WAIT=[{id:'kan',l:'カンチャン',fu:2},{id:'pen',l:'ペンチャン',fu:2},{id:'tan',l:'タンキ',fu:2}];
+const SPECIAL=[{k:'pinfuTsumo',l:'平和ツモ',fixed:20},{k:'chiitoi',l:'七対子',fixed:25}];
+
+const counts={}; [...MELDS,...HEAD,...WAIT].forEach(i=>counts[i.id]=0);
+let agari='menzenRon', special=null;
+let selRole=null, selKind=null, selVal=null; // selKind:'han'|'rank'
+let expanded=false, lastFuHigh=false;
+
+function applyCollapse(){
+  document.getElementById('main').classList.toggle('collapsed', !expanded);
+  document.getElementById('toggle70').textContent = expanded ? '70符以上を隠す ▲' : '70符以上を表示 ▼';
+}
+document.getElementById('toggle70').onclick=()=>{expanded=!expanded;applyCollapse();};
+
+const agEl=document.getElementById('agari');
+AGARI.forEach(a=>{const b=document.createElement('button');b.dataset.k=a.k;
+  b.innerHTML=`${a.l}<em>+${a.fu}</em>`;b.onclick=()=>{agari=a.k;special=null;render();};agEl.appendChild(b);});
+const spEl=document.getElementById('special');
+SPECIAL.forEach(s=>{const b=document.createElement('button');b.dataset.k=s.k;
+  b.innerHTML=`${s.l}<em>${s.fixed}符</em>`;b.onclick=()=>{special=special===s.k?null:s.k;render();};spEl.appendChild(b);});
+function buildSteppers(list,id){const c=document.getElementById(id);
+  list.forEach(it=>{const row=document.createElement('div');row.className='item';row.dataset.id=it.id;
+    row.innerHTML=`<button class="add">${it.l}<em>+${it.fu}</em></button><span class="cnt">×0</span><button class="sub">−</button>`;
+    row.querySelector('.add').onclick=()=>{counts[it.id]++;special=null;render();};
+    row.querySelector('.sub').onclick=()=>{if(counts[it.id]>0)counts[it.id]--;render();};
+    c.appendChild(row);});}
+buildSteppers(MELDS.filter(m=>m.id.endsWith('_c')),'melds-c');
+buildSteppers(MELDS.filter(m=>m.id.endsWith('_t')),'melds-t');
+buildSteppers(HEAD,'head');buildSteppers(WAIT,'wait');
+document.getElementById('reset').onclick=()=>{Object.keys(counts).forEach(k=>counts[k]=0);
+  agari='menzenRon';special=null;selRole=null;selKind=null;selVal=null;render();};
+
+/* cell clicks */
+document.getElementById('main').addEventListener('click',e=>{
+  const th=e.target.closest('th.pick'); if(!th)return;
+  selRole=th.dataset.role;
+  if(th.dataset.han==='mangan'){selKind='rank';selVal='mangan';}
+  else{selKind='han';selVal=+th.dataset.han;}
+  render();
+});
+document.getElementById('fixed').addEventListener('click',e=>{
+  const th=e.target.closest('th.pick'); if(!th)return;
+  selRole=th.dataset.role;selKind='rank';selVal=th.dataset.rank;render();
+});
+
+function computeFu(){
+  if(special){const s=SPECIAL.find(x=>x.k===special);
+    return {fu:s.fixed,sum:s.fixed,fixed:true,lines:[{label:s.l,fu:s.fixed}]};}
+  const ag=AGARI.find(a=>a.k===agari);
+  let raw=20; const lines=[{label:'副底',fu:20}];
+  if(ag.fu>0){raw+=ag.fu;lines.push({label:ag.l,fu:ag.fu});}
+  [...MELDS,...HEAD,...WAIT].forEach(it=>{const n=counts[it.id];
+    if(n>0){const add=it.fu*n;raw+=add;lines.push({label:it.l,fu:add,n});}});
+  return {fu:Math.ceil(raw/10)*10, sum:raw, lines};
+}
+
+function render(){
+  document.querySelectorAll('#agari button').forEach(b=>b.classList.toggle('on',b.dataset.k===agari&&!special));
+  document.querySelectorAll('#special button').forEach(b=>b.classList.toggle('on',b.dataset.k===special));
+  document.querySelectorAll('.item').forEach(row=>{const n=counts[row.dataset.id]||0;
+    row.querySelector('.cnt').textContent='×'+n;row.classList.toggle('zero',n===0);
+    row.classList.toggle('active',n>0&&!special);});
+
+  const res=computeFu();
+  document.getElementById('fu-total').textContent=res.fu;
+  document.getElementById('fu-sum').textContent = res.fixed ? '（固定）' : `（合計 ${res.sum}符）`;
+  document.getElementById('breakdown').innerHTML = res.lines.map(l=>
+    `<div class="bl"><span>${l.label}${l.n>1?` ×${l.n}`:''}</span><span class="v">${l.fu}符</span></div>`).join('');
+
+  // row highlight
+  document.querySelectorAll('table.main tr.rowhit').forEach(r=>r.classList.remove('rowhit'));
+  let fuRow=res.fu; if(!FU.includes(fuRow)) fuRow=Math.min(110,Math.max(20,fuRow));
+  // auto-open 70+ section when fu enters high range
+  const high=fuRow>=70;
+  if(high && !lastFuHigh){expanded=true;applyCollapse();}
+  lastFuHigh=high;
+  const row=document.querySelector(`table.main tr[data-fu="${fuRow}"]`);
+  if(row) row.classList.add('rowhit');
+
+  // header + cell pinpoint + selected-han panel
+  document.querySelectorAll('.thhit').forEach(c=>c.classList.remove('thhit'));
+  document.querySelectorAll('td.cellhit').forEach(c=>c.classList.remove('cellhit'));
+  const hint=document.getElementById('han-hint'), body=document.getElementById('han-body');
+  if(selKind===null){hint.style.display='';body.style.display='none';return;}
+  hint.style.display='none';body.style.display='';
+
+  const roleJP=selRole==='dealer'?'親家':'子家';
+  let cell, header, big, pt;
+  if(selKind==='rank'){
+    header=document.querySelector(`table.fixed th.pick[data-role="${selRole}"][data-rank="${selVal}"]`);
+    cell=document.querySelector(`table.fixed td[data-role="${selRole}"][data-rank="${selVal}"]`);
+    const v=FIXED[selVal][selRole];
+    big=RANK[selVal][0];
+    pt=`ロン <span class="pt">${fmt(v.r)}</span> ／ ツモ <span class="pt">${v.t}</span>`;
+  }else{
+    header=document.querySelector(`table.main th.pick[data-role="${selRole}"][data-han="${selVal}"]`);
+    cell=document.querySelector(`table.main tr[data-fu="${fuRow}"] td[data-role="${selRole}"][data-han="${selVal}"]`);
+    big=selVal+'翻';
+    const r=calc(fuRow,selVal,selRole);
+    if(r===null) pt=`${fuRow}符 → 該当なし`;
+    else if(r==='man'){const v=FIXED.mangan[selRole];
+      pt=`${fuRow}符・満貫　ロン <span class="pt">${fmt(v.r)}</span> ／ ツモ <span class="pt">${v.t}</span>`;}
+    else pt=`${fuRow}符　ロン <span class="pt">${fmt(r.ron)}</span> ／ ツモ <span class="pt">${r.tsumo}</span>`;
+  }
+  document.getElementById('han-big').textContent=big;
+  document.getElementById('han-role').textContent=roleJP;
+  document.getElementById('han-pt').innerHTML=pt;
+  if(header) header.classList.add('thhit');
+  if(cell) cell.classList.add('cellhit');
+}
+applyCollapse();
+render();
+</script>
+</body>
+</html>
