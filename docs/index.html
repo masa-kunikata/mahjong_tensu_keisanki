@@ -39,6 +39,7 @@
     font-size:15px;line-height:1;color:#8a877c;font-family:inherit;}
   .item .sub:hover{border-color:var(--ink);color:var(--ink);}
   .item.zero .sub{opacity:.35;pointer-events:none;}
+  .item.maxed .add{opacity:.35;pointer-events:none;}
   .tog{display:flex;flex-wrap:wrap;gap:5px;}
   .tog button{border:1px solid var(--grid);background:#fff;border-radius:3px;padding:6px 8px;cursor:pointer;
     font-family:inherit;font-size:12px;color:var(--ink);line-height:1;transition:background .1s,border-color .1s;}
@@ -63,6 +64,11 @@
   .brk .bl{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dotted var(--grid);padding:3px 0;}
   .brk .bl:last-child{border-bottom:0;}
   .brk .bl .v{font-weight:700;color:#55534a;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .brk.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:2px 10px;}
+  .brk.grid4 .bl{flex-direction:column;align-items:flex-start;gap:0;border-bottom:0;padding:2px 0;}
+  .brk.grid4 .bl span:first-child{font-size:10px;color:#8a877c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .brk.grid4 .bl .v{font-size:12px;}
+  @media (max-width:680px){.brk.grid4{grid-template-columns:repeat(2,1fr);}}
   .han-half{display:flex;flex-direction:column;justify-content:center;padding-right:72px;}
   .han-half .hh-hint{font-size:12.5px;color:#8a877c;}
   .han-half .hh-lab{font-size:10px;letter-spacing:.14em;color:#8a877c;margin-bottom:3px;}
@@ -133,8 +139,8 @@
     <div class="cgrp"><h2>面子の符（中張）</h2><div class="body" id="melds-c"></div></div>
     <div class="cgrp"><h2>面子の符（么九）</h2><div class="body" id="melds-t"></div></div>
     <div class="col">
-      <div class="cgrp"><h2>頭の符</h2><div class="body" id="head"></div></div>
-      <div class="cgrp"><h2>待ちの符</h2><div class="body" id="wait"></div></div>
+      <div class="cgrp"><h2>頭の符</h2><div class="body"><div class="tog" id="head"></div></div></div>
+      <div class="cgrp"><h2>待ちの符</h2><div class="body"><div class="tog" id="wait"></div></div></div>
     </div>
   </div>
 
@@ -236,12 +242,13 @@ const MELDS=[{id:'mk_c',l:'明刻 中張',fu:2},{id:'mk_t',l:'明刻 么九',fu:
   {id:'ak_c',l:'暗刻 中張',fu:4},{id:'ak_t',l:'暗刻 么九',fu:8},
   {id:'mg_c',l:'明槓 中張',fu:8},{id:'mg_t',l:'明槓 么九',fu:16},
   {id:'ag_c',l:'暗槓 中張',fu:16},{id:'ag_t',l:'暗槓 么九',fu:32}];
-const HEAD=[{id:'y1',l:'役牌の頭',fu:2},{id:'y2',l:'連風牌の頭',fu:4}];
-const WAIT=[{id:'kan',l:'カンチャン',fu:2},{id:'pen',l:'ペンチャン',fu:2},{id:'tan',l:'タンキ',fu:2}];
+const HEAD=[{k:'none',l:'クリア',fu:0},{k:'y1',l:'役牌の頭',fu:2},{k:'y2',l:'連風牌の頭',fu:4}];
+const WAIT=[{k:'none',l:'クリア',fu:0},{k:'kan',l:'カンチャン',fu:2},{k:'pen',l:'ペンチャン',fu:2},{k:'tan',l:'タンキ',fu:2}];
 const SPECIAL=[{k:'pinfuTsumo',l:'平和ツモ',fixed:20},{k:'chiitoi',l:'七対子',fixed:25}];
 
-const counts={}; [...MELDS,...HEAD,...WAIT].forEach(i=>counts[i.id]=0);
+const counts={}; MELDS.forEach(i=>counts[i.id]=0);
 let agari='menzenRon', special=null;
+let headSel='none', waitSel='none';
 let selRole=null, selKind=null, selVal=null; // selKind:'han'|'rank'
 let expanded=false, lastFuHigh=false;
 
@@ -260,14 +267,22 @@ SPECIAL.forEach(s=>{const b=document.createElement('button');b.dataset.k=s.k;
 function buildSteppers(list,id){const c=document.getElementById(id);
   list.forEach(it=>{const row=document.createElement('div');row.className='item';row.dataset.id=it.id;
     row.innerHTML=`<button class="add">${it.l}<em>+${it.fu}</em></button><span class="cnt">×0</span><button class="sub">−</button>`;
-    row.querySelector('.add').onclick=()=>{counts[it.id]++;special=null;render();};
+    row.querySelector('.add').onclick=()=>{
+      if(MELDS.reduce((s,m)=>s+counts[m.id],0)>=4) return;
+      counts[it.id]++;special=null;render();};
     row.querySelector('.sub').onclick=()=>{if(counts[it.id]>0)counts[it.id]--;render();};
     c.appendChild(row);});}
 buildSteppers(MELDS.filter(m=>m.id.endsWith('_c')),'melds-c');
 buildSteppers(MELDS.filter(m=>m.id.endsWith('_t')),'melds-t');
-buildSteppers(HEAD,'head');buildSteppers(WAIT,'wait');
+function buildToggle(list,id,onPick){const c=document.getElementById(id);
+  list.forEach(it=>{const b=document.createElement('button');b.dataset.k=it.k;
+    b.innerHTML=it.fu>0?`${it.l}<em>+${it.fu}</em>`:`${it.l}<em>0</em>`;
+    b.onclick=()=>{onPick(it.k);special=null;render();};c.appendChild(b);});}
+buildToggle(HEAD,'head',k=>headSel=k);
+buildToggle(WAIT,'wait',k=>waitSel=k);
 document.getElementById('reset').onclick=()=>{Object.keys(counts).forEach(k=>counts[k]=0);
-  agari='menzenRon';special=null;selRole=null;selKind=null;selVal=null;render();};
+  agari='menzenRon';special=null;headSel='none';waitSel='none';selRole=null;selKind=null;selVal=null;
+  expanded=false;lastFuHigh=false;applyCollapse();render();};
 
 /* cell clicks */
 document.getElementById('main').addEventListener('click',e=>{
@@ -288,23 +303,30 @@ function computeFu(){
   const ag=AGARI.find(a=>a.k===agari);
   let raw=20; const lines=[{label:'副底',fu:20}];
   if(ag.fu>0){raw+=ag.fu;lines.push({label:ag.l,fu:ag.fu});}
-  [...MELDS,...HEAD,...WAIT].forEach(it=>{const n=counts[it.id];
+  MELDS.forEach(it=>{const n=counts[it.id];
     if(n>0){const add=it.fu*n;raw+=add;lines.push({label:it.l,fu:add,n});}});
+  const h=HEAD.find(x=>x.k===headSel); if(h&&h.fu>0){raw+=h.fu;lines.push({label:h.l,fu:h.fu});}
+  const w=WAIT.find(x=>x.k===waitSel); if(w&&w.fu>0){raw+=w.fu;lines.push({label:w.l,fu:w.fu});}
   return {fu:Math.ceil(raw/10)*10, sum:raw, lines};
 }
 
 function render(){
   document.querySelectorAll('#agari button').forEach(b=>b.classList.toggle('on',b.dataset.k===agari&&!special));
   document.querySelectorAll('#special button').forEach(b=>b.classList.toggle('on',b.dataset.k===special));
+  document.querySelectorAll('#head button').forEach(b=>b.classList.toggle('on',b.dataset.k===headSel&&!special));
+  document.querySelectorAll('#wait button').forEach(b=>b.classList.toggle('on',b.dataset.k===waitSel&&!special));
+  const meldTotal=MELDS.reduce((s,m)=>s+counts[m.id],0);
   document.querySelectorAll('.item').forEach(row=>{const n=counts[row.dataset.id]||0;
     row.querySelector('.cnt').textContent='×'+n;row.classList.toggle('zero',n===0);
-    row.classList.toggle('active',n>0&&!special);});
+    row.classList.toggle('active',n>0&&!special);
+    row.classList.toggle('maxed',meldTotal>=4);});
 
   const res=computeFu();
   document.getElementById('fu-total').textContent=res.fu;
   document.getElementById('fu-sum').textContent = res.fixed ? '（固定）' : `（合計 ${res.sum}符）`;
   document.getElementById('breakdown').innerHTML = res.lines.map(l=>
     `<div class="bl"><span>${l.label}${l.n>1?` ×${l.n}`:''}</span><span class="v">${l.fu}符</span></div>`).join('');
+  document.getElementById('breakdown').classList.toggle('grid4', res.lines.length>=3);
 
   // row highlight
   document.querySelectorAll('table.main tr.rowhit').forEach(r=>r.classList.remove('rowhit'));
