@@ -205,32 +205,32 @@
   <div class="tbl-wrap"><table class="main" :class="{collapsed: !expanded}">
     <thead>
       <tr>
-        <th class="side" colspan="5">親家（下段＝子1人の支払い）</th>
         <th class="fucol" rowspan="2">符</th>
         <th class="side" colspan="5">子家（下段＝子／親）</th>
+        <th class="side" colspan="5">親家（下段＝子1人の支払い）</th>
       </tr>
       <tr>
-        <template v-for="han in [5,4,3,2,1]" :key="'dh'+han">
-          <th class="hn pick" :class="{thhit: isHeaderHit('dealer', han===5?'rank':'han', han===5?'mangan':han)}"
-              @click="pickCell('dealer', han===5?'rank':'han', han===5?'mangan':han)" v-text="han+'翻'"></th>
-        </template>
         <template v-for="(han,i) in [1,2,3,4,5]" :key="'ch'+han">
           <th class="hn pick" :class="{edge:i===0, thhit: isHeaderHit('child', han===5?'rank':'han', han===5?'mangan':han)}"
               @click="pickCell('child', han===5?'rank':'han', han===5?'mangan':han)" v-text="han+'翻'"></th>
+        </template>
+        <template v-for="han in [1,2,3,4,5]" :key="'dh'+han">
+          <th class="hn pick" :class="{thhit: isHeaderHit('dealer', han===5?'rank':'han', han===5?'mangan':han)}"
+              @click="pickCell('dealer', han===5?'rank':'han', han===5?'mangan':han)" v-text="han+'翻'"></th>
         </template>
       </tr>
     </thead>
     <tbody>
       <template v-for="fu in FU" :key="fu">
         <tr :class="{hifu: fu>=70, rowhit: fu===fuRow}">
-          <template v-for="han in [5,4,3,2,1]" :key="'dc'+fu+'-'+han">
-            <td :class="{man: han===5, cellhit: han!==5 && fu===fuRow && isHeaderHit('dealer','han',han)}"
-                v-html="han===5 ? '満貫' : cellHTML(calc(fu, han, 'dealer'))"></td>
-          </template>
           <td class="fucol" v-text="fu"></td>
           <template v-for="(han,i) in [1,2,3,4,5]" :key="'cc'+fu+'-'+han">
             <td :class="{man: han===5, edge:i===0, cellhit: han!==5 && fu===fuRow && isHeaderHit('child','han',han)}"
                 v-html="han===5 ? '満貫' : cellHTML(calc(fu, han, 'child'))"></td>
+          </template>
+          <template v-for="han in [1,2,3,4,5]" :key="'dc'+fu+'-'+han">
+            <td :class="{man: han===5, cellhit: han!==5 && fu===fuRow && isHeaderHit('dealer','han',han)}"
+                v-html="han===5 ? '満貫' : cellHTML(calc(fu, han, 'dealer'))"></td>
           </template>
         </tr>
       </template>
@@ -241,27 +241,27 @@
   <div class="tbl-wrap"><table class="fixed">
     <thead>
       <tr>
-        <template v-for="k in dO" :key="'dr'+k">
-          <th class="pick" :class="{thhit: isHeaderHit('dealer','rank',k)}" @click="pickCell('dealer','rank',k)" v-text="RANK[k][0]"></th>
-        </template>
         <th rowspan="3" class="midlab">5翻<br>以上</th>
         <template v-for="k in cO" :key="'cr'+k">
           <th class="pick" :class="{thhit: isHeaderHit('child','rank',k)}" @click="pickCell('child','rank',k)" v-text="RANK[k][0]"></th>
         </template>
+        <template v-for="k in dO" :key="'dr'+k">
+          <th class="pick" :class="{thhit: isHeaderHit('dealer','rank',k)}" @click="pickCell('dealer','rank',k)" v-text="RANK[k][0]"></th>
+        </template>
       </tr>
       <tr class="han-row">
-        <template v-for="k in dO" :key="'drr'+k"><td v-text="RANK[k][1]"></td></template>
         <template v-for="k in cO" :key="'crr'+k"><td v-text="RANK[k][1]"></td></template>
+        <template v-for="k in dO" :key="'drr'+k"><td v-text="RANK[k][1]"></td></template>
       </tr>
       <tr>
-        <template v-for="k in dO" :key="'drc'+k">
-          <td :class="{cellhit: isHeaderHit('dealer','rank',k)}">
-            <span class="r" v-text="fmt(FIXED[k].dealer.r)"></span><span class="t" v-text="FIXED[k].dealer.t"></span>
-          </td>
-        </template>
         <template v-for="(k,i) in cO" :key="'crc'+k">
           <td :class="{edge: i===0, cellhit: isHeaderHit('child','rank',k)}">
             <span class="r" v-text="fmt(FIXED[k].child.r)"></span><span class="t" v-text="FIXED[k].child.t"></span>
+          </td>
+        </template>
+        <template v-for="k in dO" :key="'drc'+k">
+          <td :class="{cellhit: isHeaderHit('dealer','rank',k)}">
+            <span class="r" v-text="fmt(FIXED[k].dealer.r)"></span><span class="t" v-text="FIXED[k].dealer.t"></span>
           </td>
         </template>
       </tr>
@@ -306,7 +306,7 @@ const MELDS=[{id:'mk_c',l:'明刻 中張',fu:2},{id:'mk_t',l:'明刻 么九',fu:
 const HEAD=[{k:'none',l:'クリア',fu:0},{k:'y1',l:'役牌の頭',fu:2},{k:'y2',l:'連風牌の頭',fu:4}];
 const WAIT=[{k:'none',l:'クリア',fu:0},{k:'kan',l:'カンチャン',fu:2},{k:'pen',l:'ペンチャン',fu:2},{k:'tan',l:'タンキ',fu:2}];
 const SPECIAL=[{k:'pinfuTsumo',l:'平和ツモ',fixed:20},{k:'chiitoi',l:'七対子',fixed:25}];
-const DEALER_RANKS=['yakuman','sanbai','bai','hane','mangan'], CHILD_RANKS=['mangan','hane','bai','sanbai','yakuman'];
+const DEALER_RANKS=['mangan','hane','bai','sanbai','yakuman'], CHILD_RANKS=['mangan','hane','bai','sanbai','yakuman'];
 
 const { createApp, ref, computed, watch } = Vue;
 
