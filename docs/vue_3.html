@@ -90,14 +90,17 @@
   table.main{border-collapse:collapse;width:100%;min-width:760px;}
   table.main th,table.main td{border:1px solid var(--grid);text-align:center;
     font-variant-numeric:tabular-nums;padding:5px 4px;}
-  table.main thead .side{background:var(--shade);font-size:11px;padding:5px;}
+  table.main thead .side{background:var(--shade);font-size:11px;padding:5px;
+    border-left:solid black
+  }
   table.main thead .hn{background:#f4f3ec;font-size:11px;font-weight:700;color:#44423a;width:8.2%;}
-  table.main .fucol{background:var(--shade);font-weight:800;font-size:14px;width:44px;}
+  table.main .fucol{background:var(--shade);font-weight:800;font-size:14px;}
   table.main td .r{display:block;font-weight:700;font-size:13px;line-height:1.15;}
   table.main td .t{display:block;font-size:10px;color:var(--tsumo);line-height:1.1;margin-top:1px;}
-  table.main td.man{font-weight:700;color:#333;background:#f7f6ef;}
+  table.main td.man{font-weight:700;color:#333;background:#f7f6ef;
+  }
   table.main td.na{color:#b3b1a6;}
-  .edge{border-left:2px solid #2a2a28!important;}
+  .edge{border-left:solid black!important;}
   table.main tr.rowhit td,table.main tr.rowhit th{background:var(--rowmark);}
   table.main tr.rowhit td.man{background:#fdeeb0;}
   table.main tr.rowhit .fucol{background:var(--mark);box-shadow:inset 0 0 0 2px var(--pen);}
@@ -120,7 +123,9 @@
   .toggle70{display:block;width:100%;margin-top:-1px;padding:7px 10px;cursor:pointer;
     border:1px solid var(--grid);border-top:0;background:#f4f3ec;color:#55534a;
     font-family:inherit;font-size:12px;letter-spacing:.04em;border-radius:0 0 3px 3px;
-    transition:background .1s;}
+    transition:background .1s;
+    text-align: left;
+  }
   .toggle70:hover{background:#eceadf;color:var(--ink);}
 
   .foot{font-size:10.5px;color:#8a877c;margin-top:12px;line-height:1.7;}
@@ -214,8 +219,8 @@
           <th class="hn pick" :class="{edge:i===0, thhit: isHeaderHit('child', han===5?'rank':'han', han===5?'mangan':han)}"
               @click="pickCell('child', han===5?'rank':'han', han===5?'mangan':han)" v-text="han+'翻'"></th>
         </template>
-        <template v-for="han in [1,2,3,4,5]" :key="'dh'+han">
-          <th class="hn pick" :class="{thhit: isHeaderHit('dealer', han===5?'rank':'han', han===5?'mangan':han)}"
+        <template v-for="(han,i) in [1,2,3,4,5]" :key="'dh'+han">
+          <th class="hn pick" :class="{edge:i===0, thhit: isHeaderHit('dealer', han===5?'rank':'han', han===5?'mangan':han)}"
               @click="pickCell('dealer', han===5?'rank':'han', han===5?'mangan':han)" v-text="han+'翻'"></th>
         </template>
       </tr>
@@ -228,8 +233,8 @@
             <td :class="{man: han===5, edge:i===0, cellhit: han!==5 && fu===fuRow && isHeaderHit('child','han',han)}"
                 v-html="han===5 ? '満貫' : cellHTML(calc(fu, han, 'child'))"></td>
           </template>
-          <template v-for="han in [1,2,3,4,5]" :key="'dc'+fu+'-'+han">
-            <td :class="{man: han===5, cellhit: han!==5 && fu===fuRow && isHeaderHit('dealer','han',han)}"
+          <template v-for="(han,i) in [1,2,3,4,5]" :key="'dc'+fu+'-'+han">
+            <td :class="{man: han===5, edge:i===0, cellhit: han!==5 && fu===fuRow && isHeaderHit('dealer','han',han)}"
                 v-html="han===5 ? '満貫' : cellHTML(calc(fu, han, 'dealer'))"></td>
           </template>
         </tr>
@@ -242,16 +247,16 @@
     <thead>
       <tr>
         <th rowspan="3" class="midlab">5翻<br>以上</th>
-        <template v-for="k in cO" :key="'cr'+k">
-          <th class="pick" :class="{thhit: isHeaderHit('child','rank',k)}" @click="pickCell('child','rank',k)" v-text="RANK[k][0]"></th>
+        <template v-for="(k,i) in cO" :key="'cr'+k">
+          <th class="pick" :class="{edge: i===0, thhit: isHeaderHit('child','rank',k)}" @click="pickCell('child','rank',k)" v-text="RANK[k][0]"></th>
         </template>
-        <template v-for="k in dO" :key="'dr'+k">
-          <th class="pick" :class="{thhit: isHeaderHit('dealer','rank',k)}" @click="pickCell('dealer','rank',k)" v-text="RANK[k][0]"></th>
+        <template v-for="(k,i) in dO" :key="'dr'+k">
+          <th class="pick" :class="{edge: i===0, thhit: isHeaderHit('dealer','rank',k)}" @click="pickCell('dealer','rank',k)" v-text="RANK[k][0]"></th>
         </template>
       </tr>
       <tr class="han-row">
-        <template v-for="k in cO" :key="'crr'+k"><td v-text="RANK[k][1]"></td></template>
-        <template v-for="k in dO" :key="'drr'+k"><td v-text="RANK[k][1]"></td></template>
+        <template v-for="(k,i) in cO" :key="'crr'+k"><td :class="{edge: i===0}" v-text="RANK[k][1]"></td></template>
+        <template v-for="(k,i) in dO" :key="'drr'+k"><td :class="{edge: i===0}" v-text="RANK[k][1]"></td></template>
       </tr>
       <tr>
         <template v-for="(k,i) in cO" :key="'crc'+k">
@@ -259,8 +264,8 @@
             <span class="r" v-text="fmt(FIXED[k].child.r)"></span><span class="t" v-text="FIXED[k].child.t"></span>
           </td>
         </template>
-        <template v-for="k in dO" :key="'drc'+k">
-          <td :class="{cellhit: isHeaderHit('dealer','rank',k)}">
+        <template v-for="(k,i) in dO" :key="'drc'+k">
+          <td :class="{edge: i===0, cellhit: isHeaderHit('dealer','rank',k)}">
             <span class="r" v-text="fmt(FIXED[k].dealer.r)"></span><span class="t" v-text="FIXED[k].dealer.t"></span>
           </td>
         </template>
