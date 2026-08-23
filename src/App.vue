@@ -10,8 +10,6 @@ provideCalculator()
 </script>
 
 <template>
-  <p class="note">符計算 / 点数早見表（Vite + TypeScript 版。オフラインでも動きます）</p>
-
   <div class="sheet">
     <FuCalculator />
     <ResultPanel />
