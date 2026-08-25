@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麻雀点数記録</title>
+<style>
+  :root {
+    --bg: #f5f3ee;
+    --panel: #ffffff;
+    --border: #d8d2c4;
+    --accent: #7a3b2e;
+    --accent-light: #f0e2dc;
+    --plus: #1a6b3c;
+    --minus: #b3261e;
+    --text: #2b2620;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+  }
+  h1 {
+    font-size: 1.3rem;
+    margin: 0 0 12px;
+    color: var(--accent);
+  }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 14px;
+    background: var(--panel);
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .toolbar .group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+  }
+  button {
+    font-family: inherit;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    background: var(--accent);
+    color: white;
+    transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.85; }
+  button.secondary {
+    background: white;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  button.danger {
+    background: var(--minus);
+  }
+  button.tiny {
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    border-radius: 6px;
+  }
+  select, input[type=text], input[type=number] {
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 0.85rem;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    background: var(--panel);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding-bottom: 4px;
+  }
+  table {
+    border-collapse: collapse;
+    min-width: 100%;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 6px;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  th.corner, td.name-cell {
+    position: sticky;
+    left: 0;
+    background: var(--panel);
+    z-index: 2;
+    min-width: 110px;
+  }
+  thead th {
+    background: var(--accent-light);
+    z-index: 1;
+  }
+  th.corner { z-index: 3; }
+  .hand-header {
+    min-width: 120px;
+  }
+  .hand-label-input {
+    width: 90px;
+    text-align: center;
+    font-weight: 600;
+  }
+  .honba-row {
+    font-size: 0.7rem;
+    color: #555;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+  }
+  .honba-row input {
+    width: 32px;
+    padding: 1px 2px;
+  }
+  .check-sum {
+    font-size: 0.7rem;
+    margin-top: 3px;
+  }
+  .check-sum.ok { color: var(--plus); }
+  .check-sum.ng { color: var(--minus); font-weight: 700; }
+  .name-input {
+    width: 90px;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    text-align: center;
+  }
+  .cell-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .dealer-label {
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--accent);
+  }
+  .score-input {
+    width: 72px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .score-input.pos { color: var(--plus); font-weight: 600; }
+  .score-input.neg { color: var(--minus); font-weight: 600; }
+  tfoot td {
+    font-weight: 700;
+    background: #fafaf7;
+  }
+  .del-hand-btn {
+    margin-top: 2px;
+  }
+  .edit-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    margin-top: 4px;
+    color: #666;
+  }
+  .edit-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+  }
+  .edit-toggle input {
+    margin: 0;
+    accent-color: var(--accent);
+  }
+  .score-input:disabled {
+    background: #ece8e0;
+    color: #999;
+    cursor: not-allowed;
+  }
+  .hint {
+    font-size: 0.75rem;
+    color: #666;
+    margin: 6px 2px 14px;
+    line-height: 1.5;
+  }
+
+  /* ---- モーダル ---- */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 24, 18, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 18px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  }
+  .modal-box h2 {
+    margin: 0 0 4px;
+    font-size: 1.05rem;
+    color: var(--accent);
+  }
+  .modal-sub {
+    font-size: 0.75rem;
+    color: #777;
+    margin: 0 0 14px;
+  }
+  .form-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+  }
+  .form-row > label:first-child {
+    min-width: 76px;
+    flex-shrink: 0;
+  }
+  .form-row select,
+  .form-row input[type=number] {
+    flex: 1;
+    min-width: 0;
+  }
+  .uma-presets { flex-wrap: wrap; }
+  .uma-inputs { flex-wrap: wrap; }
+  .uma-inputs label { min-width: auto; }
+  .uma-inputs input { width: 64px; flex: none; }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .calc-preview {
+    font-size: 0.82rem;
+    background: var(--accent-light);
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-top: 6px;
+    line-height: 1.7;
+  }
+  .calc-preview .ng { color: var(--minus); font-weight: 700; }
+  .uma-result-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    font-size: 0.85rem;
+  }
+  .uma-result-table th, .uma-result-table td {
+    border: 1px solid var(--border);
+    padding: 6px;
+    text-align: center;
+  }
+  .uma-result-table thead th { background: var(--accent-light); }
+  .uma-result-table td.pos { color: var(--plus); font-weight: 700; }
+  .uma-result-table td.neg { color: var(--minus); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>🀄 麻雀点数記録</h1>
+
+<div class="toolbar">
+  <div class="group">
+    <button id="addHandBtn">＋ 局を追加</button>
+  </div>
+  <div class="group">
+    <label>次の親: </label>
+    <select id="renchanSelect">
+      <option value="rotate">親が流れる（次の人）</option>
+      <option value="renchan">連荘（同じ親が続く）</option>
+    </select>
+  </div>
+  <div class="group">
+    <button class="secondary" id="calcBtn">🧮 点数計算</button>
+  </div>
+  <div class="group">
+    <button class="secondary" id="umaOkaBtn">🏆 ウマ・オカ集計</button>
+  </div>
+  <div class="group" style="margin-left:auto;">
+    <button class="danger" id="resetBtn">初期化</button>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table id="scoreTable">
+    <thead>
+      <tr id="headerRow">
+        <th class="corner">対局者</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+    <tfoot>
+      <tr id="totalRow">
+        <td class="name-cell">合計</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<p class="hint">
+  各セル上部のラジオボタンでその局の「親」を指定できます。数値欄には点数の増減（例: 8000 / -8000）を入力してください。<br>
+  列ヘッダーの局名・本場はクリックして自由に編集できます。各局の増減合計が0でない場合は赤字で警告表示されます。<br>
+  データはブラウザのlocalStorageに自動保存されます（このブラウザ・この端末のみ）。
+</p>
+
+<!-- 点数計算モーダル -->
+<div class="modal-overlay" id="calcModal">
+  <div class="modal-box">
+    <h2>🧮 点数計算</h2>
+    <p class="modal-sub">ロン/ツモ・翻符・供託を入力すると、「編集可」に指定されている局の点数増減を自動計算して反映します。</p>
+
+    <div class="form-row">
+      <label>対象の局</label>
+      <strong id="calcHandLabel">-</strong>
+    </div>
+    <div class="form-row">
+      <label>和了方法</label>
+      <select id="calcWinType">
+        <option value="ron">ロン</option>
+        <option value="tsumo">ツモ</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>和了者</label>
+      <select id="calcWinner"></select>
+    </div>
+    <div class="form-row" id="calcLoserRow">
+      <label>放銃者</label>
+      <select id="calcLoser"></select>
+    </div>
+    <div class="form-row">
+      <label>翻</label>
+      <select id="calcHan"></select>
+    </div>
+    <div class="form-row" id="calcFuRow">
+      <label>符</label>
+      <select id="calcFu"></select>
+    </div>
+    <div class="form-row">
+      <label>本場</label>
+      <input type="number" id="calcHonba" min="0" value="0">
+    </div>
+    <div class="form-row">
+      <label>供託本数</label>
+      <input type="number" id="calcKyotaku" min="0" value="0">
+    </div>
+
+    <div class="calc-preview" id="calcPreview"></div>
+
+    <div class="modal-actions">
+      <button class="secondary" id="calcCancelBtn">キャンセル</button>
+      <button id="calcApplyBtn">計算して反映</button>
+    </div>
+  </div>
+</div>
+
+<!-- ウマ・オカ集計モーダル -->
+<div class="modal-overlay" id="umaOkaModal">
+  <div class="modal-box">
+    <h2>🏆 ウマ・オカ集計</h2>
+    <p class="modal-sub">現在の合計点をもとに、配給点・返し点・ウマから半荘終了時の最終スコアを計算します。</p>
+
+    <div class="form-row">
+      <label>配給点</label>
+      <input type="number" id="umaStart" step="1000" value="25000">
+    </div>
+    <div class="form-row">
+      <label>返し点</label>
+      <input type="number" id="umaReturn" step="1000" value="30000">
+    </div>
+    <div class="form-row uma-presets">
+      <button type="button" class="tiny secondary" data-uma-preset="0,0,0,0">ウマなし</button>
+      <button type="button" class="tiny secondary" data-uma-preset="20,10,-10,-20">1位+20/2位+10</button>
+      <button type="button" class="tiny secondary" data-uma-preset="30,10,-10,-30">1位+30/2位+10</button>
+      <button type="button" class="tiny secondary" data-uma-preset="30,20,-20,-30">1位+30/2位+20</button>
+    </div>
+    <div class="form-row uma-inputs">
+      <label>1位</label><input type="number" id="uma1" value="20">
+      <label>2位</label><input type="number" id="uma2" value="10">
+      <label>3位</label><input type="number" id="uma3" value="-10">
+      <label>4位</label><input type="number" id="uma4" value="-20">
+    </div>
+
+    <div class="modal-actions">
+      <button class="secondary" id="umaCancelBtn">閉じる</button>
+      <button id="umaComputeBtn">集計する</button>
+    </div>
+
+    <div id="umaResult"></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = "mahjongScoreState_v1";
+const ROUND_ORDER = ["東", "南", "西", "北"];
+
+function defaultState() {
+  const firstId = cryptoId();
+  return {
+    players: ["プレイヤー1", "プレイヤー2", "プレイヤー3", "プレイヤー4"],
+    hands: [
+      { id: firstId, label: "東1局", honba: 0, dealerIndex: 0, deltas: [0,0,0,0] }
+    ],
+    editableHandId: firstId
+  };
+}
+
+function cryptoId() {
+  return 'h' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    if (!parsed.players || !parsed.hands || parsed.hands.length === 0) return defaultState();
+
+    // 旧バージョン（局ごとのeditableフラグ）からの移行
+    if (parsed.editableHandId === undefined) {
+      const flagged = parsed.hands.find(h => h.editable);
+      parsed.editableHandId = flagged ? flagged.id : parsed.hands[parsed.hands.length - 1].id;
+    }
+    parsed.hands.forEach(h => { delete h.editable; });
+
+    // editableHandIdが実在する局を指していない場合は最後の局に補正
+    if (!parsed.hands.some(h => h.id === parsed.editableHandId)) {
+      parsed.editableHandId = parsed.hands[parsed.hands.length - 1].id;
+    }
+    return parsed;
+  } catch (e) {
+    console.error("state load failed", e);
+    return defaultState();
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+
+// ---- 次局のラベル/本場/親 を推測 ----
+function parseLabel(label) {
+  // "東1局" のような文字列から round/num を抽出。失敗したらnull
+  const m = label.match(/^([東南西北])(\d+)局/);
+  if (!m) return null;
+  return { round: m[1], num: parseInt(m[2], 10) };
+}
+
+function suggestNext(mode) {
+  const last = state.hands[state.hands.length - 1];
+  const parsed = parseLabel(last.label) || { round: "東", num: 1 };
+  let { round, num } = parsed;
+  let honba = last.honba;
+  let dealerIndex = last.dealerIndex;
+
+  if (mode === "renchan") {
+    honba += 1;
+    // dealerIndex はそのまま、局番号もそのまま
+  } else {
+    honba = 0;
+    dealerIndex = (last.dealerIndex + 1) % 4;
+    num += 1;
+    if (num > 4) {
+      num = 1;
+      const idx = ROUND_ORDER.indexOf(round);
+      round = ROUND_ORDER[(idx + 1) % ROUND_ORDER.length];
+    }
+  }
+  return { label: `${round}${num}局`, honba, dealerIndex };
+}
+
+// ---- 描画 ----
+function render() {
+  const headerRow = document.getElementById("headerRow");
+  const tableBody = document.getElementById("tableBody");
+  const totalRow = document.getElementById("totalRow");
+
+  // ヘッダー
+  headerRow.innerHTML = '<th class="corner">対局者</th>';
+  state.hands.forEach(hand => {
+    const th = document.createElement("th");
+    th.className = "hand-header";
+    const sum = hand.deltas.reduce((a,b) => a + (Number(b)||0), 0);
+    th.innerHTML = `
+      <input type="text" class="hand-label-input" data-hand="${hand.id}" value="${escapeHtml(hand.label)}">
+      <div class="honba-row">
+        <span>${hand.honba}本場</span>
+        <button class="tiny secondary" data-honba-minus="${hand.id}">-</button>
+        <button class="tiny secondary" data-honba-plus="${hand.id}">+</button>
+      </div>
+      <div class="edit-toggle">
+        <label><input type="radio" name="editableHandGlobal" value="${hand.id}" data-edit-hand="${hand.id}" ${state.editableHandId === hand.id ? "checked" : ""}>編集可</label>
+      </div>
+      <div class="check-sum ${sum === 0 ? 'ok' : 'ng'}">合計 ${sum === 0 ? '✓ 0' : sum}</div>
+      <button class="tiny danger del-hand-btn" data-del-hand="${hand.id}">削除</button>
+    `;
+    headerRow.appendChild(th);
+  });
+
+  // 本体（4人分の行）
+  tableBody.innerHTML = "";
+  state.players.forEach((name, pIdx) => {
+    const tr = document.createElement("tr");
+    const nameTd = document.createElement("td");
+    nameTd.className = "name-cell";
+    nameTd.innerHTML = `<input type="text" class="name-input" data-player="${pIdx}" value="${escapeHtml(name)}">`;
+    tr.appendChild(nameTd);
+
+    state.hands.forEach(hand => {
+      const td = document.createElement("td");
+      const val = hand.deltas[pIdx] ?? 0;
+      const cls = val > 0 ? "pos" : (val < 0 ? "neg" : "");
+      td.innerHTML = `
+        <div class="cell-inner">
+          <label class="dealer-label">
+            <input type="radio" name="dealer-${hand.id}" ${hand.dealerIndex === pIdx ? "checked" : ""} data-dealer-hand="${hand.id}" data-dealer-player="${pIdx}">
+            親
+          </label>
+          <input type="number" class="score-input ${cls}" step="100" data-score-hand="${hand.id}" data-score-player="${pIdx}" value="${val}" ${state.editableHandId === hand.id ? "" : "disabled"}>
+        </div>
+      `;
+      tr.appendChild(td);
+    });
+    tableBody.appendChild(tr);
+  });
+
+  // 合計行
+  totalRow.innerHTML = '<td class="name-cell">合計</td>';
+  state.players.forEach((name, pIdx) => {
+    const total = state.hands.reduce((sum, h) => sum + (Number(h.deltas[pIdx]) || 0), 0);
+    const td = document.createElement("td");
+    td.textContent = total;
+    td.style.color = total > 0 ? "var(--plus)" : (total < 0 ? "var(--minus)" : "inherit");
+    totalRow.appendChild(td);
+  });
+
+  attachEvents();
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, s => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[s]));
+}
+
+function attachEvents() {
+  document.querySelectorAll(".name-input").forEach(el => {
+    el.addEventListener("change", e => {
+      const idx = Number(e.target.dataset.player);
+      state.players[idx] = e.target.value || `プレイヤー${idx+1}`;
+      saveState();
+    });
+  });
+
+  document.querySelectorAll(".hand-label-input").forEach(el => {
+    el.addEventListener("change", e => {
+      const hand = state.hands.find(h => h.id === e.target.dataset.hand);
+      hand.label = e.target.value || hand.label;
+      saveState();
+    });
+  });
+
+  document.querySelectorAll("[data-honba-plus]").forEach(el => {
+    el.addEventListener("click", e => {
+      const hand = state.hands.find(h => h.id === e.target.dataset.honbaPlus);
+      hand.honba += 1;
+      saveState(); render();
+    });
+  });
+  document.querySelectorAll("[data-honba-minus]").forEach(el => {
+    el.addEventListener("click", e => {
+      const hand = state.hands.find(h => h.id === e.target.dataset.honbaMinus);
+      hand.honba = Math.max(0, hand.honba - 1);
+      saveState(); render();
+    });
+  });
+
+  document.querySelectorAll("[data-del-hand]").forEach(el => {
+    el.addEventListener("click", e => {
+      if (state.hands.length <= 1) {
+        alert("最後の1局は削除できません。");
+        return;
+      }
+      if (!confirm("この局を削除しますか？")) return;
+      const id = e.target.dataset.delHand;
+      state.hands = state.hands.filter(h => h.id !== id);
+      if (state.editableHandId === id) {
+        state.editableHandId = state.hands[state.hands.length - 1].id;
+      }
+      saveState(); render();
+    });
+  });
+
+  document.querySelectorAll("[data-dealer-hand]").forEach(el => {
+    el.addEventListener("change", e => {
+      const hand = state.hands.find(h => h.id === e.target.dataset.dealerHand);
+      hand.dealerIndex = Number(e.target.dataset.dealerPlayer);
+      saveState();
+    });
+  });
+
+  document.querySelectorAll("[data-edit-hand]").forEach(el => {
+    el.addEventListener("change", e => {
+      state.editableHandId = e.target.dataset.editHand;
+      saveState(); render();
+    });
+  });
+
+  document.querySelectorAll(".score-input").forEach(el => {
+    el.addEventListener("input", e => {
+      const hand = state.hands.find(h => h.id === e.target.dataset.scoreHand);
+      const pIdx = Number(e.target.dataset.scorePlayer);
+      hand.deltas[pIdx] = e.target.value === "" ? 0 : Number(e.target.value);
+      saveState();
+      render(); // 合計・チェック表示を即時更新（フォーカスは失われるので下でケア）
+    });
+  });
+}
+
+// ==================================================================
+// 🧮 点数計算（ロン/ツモ・翻符・供託 → 4人分の増減）
+// ==================================================================
+
+function calcBasePoints(han, fu) {
+  // 5翻以上は符に関係なく固定
+  if (han >= 13) return 8000;   // 役満
+  if (han >= 11) return 6000;   // 三倍満
+  if (han >= 8)  return 4000;   // 倍満
+  if (han >= 6)  return 3000;   // 跳満
+  if (han === 5) return 2000;   // 満貫
+  let base = fu * Math.pow(2, 2 + han);
+  return Math.min(base, 2000);  // 切り上げ満貫（4翻30符超など）
+}
+
+function roundUp100(n) {
+  return Math.ceil(n / 100) * 100;
+}
+
+function calcHandScore({ winnerIdx, loserIdx, isTsumo, han, fu, honba, kyotaku, dealerIndex }) {
+  const base = calcBasePoints(han, fu);
+  const isDealerWinner = winnerIdx === dealerIndex;
+  const deltas = [0, 0, 0, 0];
+
+  if (isTsumo) {
+    for (let p = 0; p < 4; p++) {
+      if (p === winnerIdx) continue;
+      let pay = isDealerWinner ? base * 2 : (p === dealerIndex ? base * 2 : base * 1);
+      pay = roundUp100(pay) + honba * 100;
+      deltas[p] -= pay;
+      deltas[winnerIdx] += pay;
+    }
+  } else {
+    let points = isDealerWinner ? base * 6 : base * 4;
+    points = roundUp100(points) + honba * 300;
+    deltas[loserIdx] -= points;
+    deltas[winnerIdx] += points;
+  }
+
+  deltas[winnerIdx] += kyotaku * 1000;
+  return deltas;
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add("open");
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove("open");
+}
+
+function setupCalcModalStatic() {
+  // 翻セレクト（1〜13翻）
+  const hanSelect = document.getElementById("calcHan");
+  hanSelect.innerHTML = "";
+  for (let i = 1; i <= 13; i++) {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = i < 13 ? `${i}翻` : `13翻（役満）`;
+    if (i === 3) opt.selected = true;
+    hanSelect.appendChild(opt);
+  }
+
+  // 符セレクト
+  const fuSelect = document.getElementById("calcFu");
+  fuSelect.innerHTML = "";
+  [20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 110].forEach(fu => {
+    const opt = document.createElement("option");
+    opt.value = fu;
+    opt.textContent = `${fu}符`;
+    if (fu === 30) opt.selected = true;
+    fuSelect.appendChild(opt);
+  });
+
+  ["calcWinType", "calcWinner", "calcLoser", "calcHan", "calcFu", "calcHonba", "calcKyotaku"]
+    .forEach(id => {
+      document.getElementById(id).addEventListener("change", updateCalcPreview);
+      document.getElementById(id).addEventListener("input", updateCalcPreview);
+    });
+
+  document.getElementById("calcWinType").addEventListener("change", toggleCalcLoserRow);
+  document.getElementById("calcHan").addEventListener("change", toggleCalcFuRow);
+
+  document.getElementById("calcCancelBtn").addEventListener("click", () => closeModal("calcModal"));
+  document.getElementById("calcApplyBtn").addEventListener("click", applyCalc);
+  document.getElementById("calcModal").addEventListener("click", e => {
+    if (e.target.id === "calcModal") closeModal("calcModal");
+  });
+}
+
+function toggleCalcLoserRow() {
+  const isTsumo = document.getElementById("calcWinType").value === "tsumo";
+  document.getElementById("calcLoserRow").style.display = isTsumo ? "none" : "flex";
+}
+function toggleCalcFuRow() {
+  const han = Number(document.getElementById("calcHan").value);
+  document.getElementById("calcFuRow").style.display = han >= 5 ? "none" : "flex";
+}
+
+function openCalcModal() {
+  const hand = state.hands.find(h => h.id === state.editableHandId);
+  if (!hand) {
+    alert("編集可能な局がありません。局のヘッダーで「編集可」を選んでから計算してください。");
+    return;
+  }
+
+  document.getElementById("calcHandLabel").textContent = `${hand.label}${hand.honba ? `（${hand.honba}本場）` : ""}`;
+
+  const playerOpts = state.players.map((p, i) => `<option value="${i}">${escapeHtml(p)}</option>`).join("");
+  const winnerSel = document.getElementById("calcWinner");
+  const loserSel = document.getElementById("calcLoser");
+  winnerSel.innerHTML = playerOpts;
+  loserSel.innerHTML = playerOpts;
+  winnerSel.value = 0;
+  loserSel.value = 1;
+
+  document.getElementById("calcHonba").value = hand.honba;
+  document.getElementById("calcKyotaku").value = 0;
+
+  toggleCalcLoserRow();
+  toggleCalcFuRow();
+  updateCalcPreview();
+  openModal("calcModal");
+}
+
+function getCalcInputs() {
+  const hand = state.hands.find(h => h.id === state.editableHandId);
+  const isTsumo = document.getElementById("calcWinType").value === "tsumo";
+  const winnerIdx = Number(document.getElementById("calcWinner").value);
+  const loserIdx = Number(document.getElementById("calcLoser").value);
+  const han = Number(document.getElementById("calcHan").value);
+  const fu = Number(document.getElementById("calcFu").value);
+  const honba = Number(document.getElementById("calcHonba").value) || 0;
+  const kyotaku = Number(document.getElementById("calcKyotaku").value) || 0;
+  return { hand, isTsumo, winnerIdx, loserIdx, han, fu, honba, kyotaku };
+}
+
+function updateCalcPreview() {
+  const { hand, isTsumo, winnerIdx, loserIdx, han, fu, honba, kyotaku } = getCalcInputs();
+  const preview = document.getElementById("calcPreview");
+  if (!hand) { preview.innerHTML = ""; return; }
+  if (!isTsumo && winnerIdx === loserIdx) {
+    preview.innerHTML = `<span class="ng">和了者と放銃者が同じです</span>`;
+    return;
+  }
+  const deltas = calcHandScore({ winnerIdx, loserIdx, isTsumo, han, fu, honba, kyotaku, dealerIndex: hand.dealerIndex });
+  preview.innerHTML = state.players
+    .map((name, i) => `${escapeHtml(name)}: <strong>${deltas[i] > 0 ? "+" : ""}${deltas[i]}</strong>`)
+    .join("　/　");
+}
+
+function applyCalc() {
+  const { hand, isTsumo, winnerIdx, loserIdx, han, fu, honba, kyotaku } = getCalcInputs();
+  if (!hand) {
+    alert("編集可能な局がありません。局のヘッダーで「編集可」を選んでから計算してください。");
+    return;
+  }
+  if (!isTsumo && winnerIdx === loserIdx) {
+    alert("和了者と放銃者が同じです。放銃者を選び直してください。");
+    return;
+  }
+  const deltas = calcHandScore({ winnerIdx, loserIdx, isTsumo, han, fu, honba, kyotaku, dealerIndex: hand.dealerIndex });
+  hand.deltas = deltas;
+  hand.honba = honba;
+  saveState();
+  render();
+  closeModal("calcModal");
+}
+
+// ==================================================================
+// 🏆 ウマ・オカ集計
+// ==================================================================
+
+function setupUmaModalStatic() {
+  document.querySelectorAll("[data-uma-preset]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const vals = btn.dataset.umaPreset.split(",").map(Number);
+      document.getElementById("uma1").value = vals[0];
+      document.getElementById("uma2").value = vals[1];
+      document.getElementById("uma3").value = vals[2];
+      document.getElementById("uma4").value = vals[3];
+    });
+  });
+  document.getElementById("umaCancelBtn").addEventListener("click", () => closeModal("umaOkaModal"));
+  document.getElementById("umaComputeBtn").addEventListener("click", computeUmaOka);
+  document.getElementById("umaOkaModal").addEventListener("click", e => {
+    if (e.target.id === "umaOkaModal") closeModal("umaOkaModal");
+  });
+}
+
+function openUmaOkaModal() {
+  const s = state.umaOkaSettings || { startPoints: 25000, returnPoints: 30000, uma: [20, 10, -10, -20] };
+  document.getElementById("umaStart").value = s.startPoints;
+  document.getElementById("umaReturn").value = s.returnPoints;
+  document.getElementById("uma1").value = s.uma[0];
+  document.getElementById("uma2").value = s.uma[1];
+  document.getElementById("uma3").value = s.uma[2];
+  document.getElementById("uma4").value = s.uma[3];
+  document.getElementById("umaResult").innerHTML = "";
+  openModal("umaOkaModal");
+}
+
+function computeUmaOka() {
+  const startPoints = Number(document.getElementById("umaStart").value) || 0;
+  const returnPoints = Number(document.getElementById("umaReturn").value) || 0;
+  const uma = [1, 2, 3, 4].map(i => Number(document.getElementById("uma" + i).value) || 0);
+
+  state.umaOkaSettings = { startPoints, returnPoints, uma };
+  saveState();
+
+  const totals = state.players.map((name, i) => {
+    const delta = state.hands.reduce((sum, h) => sum + (Number(h.deltas[i]) || 0), 0);
+    return { idx: i, name, raw: startPoints + delta };
+  });
+
+  const ranked = [...totals].sort((a, b) => b.raw - a.raw || a.idx - b.idx);
+  const oka = ((returnPoints - startPoints) * 4) / 1000;
+
+  const rows = ranked.map((t, rankIdx) => {
+    let result = (t.raw - returnPoints) / 1000 + uma[rankIdx];
+    if (rankIdx === 0) result += oka;
+    result = Math.round(result * 10) / 10;
+    return { ...t, rank: rankIdx + 1, result };
+  });
+
+  document.getElementById("umaResult").innerHTML = `
+    <table class="uma-result-table">
+      <thead><tr><th>順位</th><th>対局者</th><th>素点</th><th>結果(pt)</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td>${r.rank}位</td>
+            <td>${escapeHtml(r.name)}</td>
+            <td>${r.raw}</td>
+            <td class="${r.result > 0 ? "pos" : (r.result < 0 ? "neg" : "")}">${r.result > 0 ? "+" : ""}${r.result}</td>
+          </tr>`).join("")}
+      </tbody>
+    </table>
+    <p class="hint" style="margin:8px 0 0;">結果(pt)は1000点=1ptとして、配給点・返し点・ウマ・オカ（1位に加算）から算出した最終スコアです。同点は元の並び順で順位付けしています。</p>
+  `;
+}
+
+document.getElementById("calcBtn").addEventListener("click", openCalcModal);
+document.getElementById("umaOkaBtn").addEventListener("click", openUmaOkaModal);
+setupCalcModalStatic();
+setupUmaModalStatic();
+
+document.getElementById("addHandBtn").addEventListener("click", () => {
+  const mode = document.getElementById("renchanSelect").value;
+  const sug = suggestNext(mode);
+  const newHand = {
+    id: cryptoId(),
+    label: sug.label,
+    honba: sug.honba,
+    dealerIndex: sug.dealerIndex,
+    deltas: [0,0,0,0]
+  };
+  state.hands.push(newHand);
+  state.editableHandId = newHand.id;
+  saveState();
+  render();
+  // 新しい列にスクロール
+  const wrap = document.querySelector(".table-wrap");
+  wrap.scrollLeft = wrap.scrollWidth;
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (!confirm("すべてのデータを初期化します。元に戻せません。よろしいですか？")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = defaultState();
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

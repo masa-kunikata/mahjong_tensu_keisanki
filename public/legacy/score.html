@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麻雀点数記録</title>
+<style>
+  :root {
+    --bg: #f5f3ee;
+    --panel: #ffffff;
+    --border: #d8d2c4;
+    --accent: #7a3b2e;
+    --accent-light: #f0e2dc;
+    --plus: #1a6b3c;
+    --minus: #b3261e;
+    --text: #2b2620;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+  }
+  h1 {
+    font-size: 1.3rem;
+    margin: 0 0 12px;
+    color: var(--accent);
+  }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 14px;
+    background: var(--panel);
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .toolbar .group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+  }
+  button {
+    font-family: inherit;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    background: var(--accent);
+    color: white;
+    transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.85; }
+  button.secondary {
+    background: white;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  button.danger {
+    background: var(--minus);
+  }
+  button.tiny {
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    border-radius: 6px;
+  }
+  select, input[type=text], input[type=number] {
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 0.85rem;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    background: var(--panel);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding-bottom: 4px;
+  }
+  table {
+    border-collapse: collapse;
+    min-width: 100%;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 6px;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  th.corner, td.name-cell {
+    position: sticky;
+    left: 0;
+    background: var(--panel);
+    z-index: 2;
+    min-width: 110px;
+  }
+  thead th {
+    background: var(--accent-light);
+    z-index: 1;
+  }
+  th.corner { z-index: 3; }
+  .hand-header {
+    min-width: 120px;
+  }
+  .hand-label-input {
+    width: 90px;
+    text-align: center;
+    font-weight: 600;
+  }
+  .honba-row {
+    font-size: 0.7rem;
+    color: #555;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+  }
+  .honba-row input {
+    width: 32px;
+    padding: 1px 2px;
+  }
+  .check-sum {
+    font-size: 0.7rem;
+    margin-top: 3px;
+  }
+  .check-sum.ok { color: var(--plus); }
+  .check-sum.ng { color: var(--minus); font-weight: 700; }
+  .name-input {
+    width: 90px;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    text-align: center;
+  }
+  .cell-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .dealer-label {
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--accent);
+  }
+  .score-input {
+    width: 72px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .score-input.pos { color: var(--plus); font-weight: 600; }
+  .score-input.neg { color: var(--minus); font-weight: 600; }
+  tfoot td {
+    font-weight: 700;
+    background: #fafaf7;
+  }
+  .del-hand-btn {
+    margin-top: 2px;
+  }
+  .hint {
+    font-size: 0.75rem;
+    color: #666;
+    margin: 6px 2px 14px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<h1>🀄 麻雀点数記録</h1>
+
+<div class="toolbar">
+  <div class="group">
+    <button id="addHandBtn">＋ 局を追加</button>
+  </div>
+  <div class="group">
+    <label>次の親: </label>
+    <select id="renchanSelect">
+      <option value="rotate">親が流れる（次の人）</option>
+      <option value="renchan">連荘（同じ親が続く）</option>
+    </select>
+  </div>
+  <div class="group" style="margin-left:auto;">
+    <button class="danger" id="resetBtn">初期化</button>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table id="scoreTable">
+    <thead>
+      <tr id="headerRow">
+        <th class="corner">対局者</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+    <tfoot>
+      <tr id="totalRow">
+        <td class="name-cell">合計</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<p class="hint">
+  各セル上部のラジオボタンでその局の「親」を指定できます。数値欄には点数の増減（例: 8000 / -8000）を入力してください。<br>
+  列ヘッダーの局名・本場はクリックして自由に編集できます。各局の増減合計が0でない場合は赤字で警告表示されます。<br>
+  データはブラウザのlocalStorageに自動保存されます（このブラウザ・この端末のみ）。
+</p>
+
+<script>
+const STORAGE_KEY = "mahjongScoreState_v1";
+const ROUND_ORDER = ["東", "南", "西", "北"];
+
+function defaultState() {
+  return {
+    players: ["プレイヤー1", "プレイヤー2", "プレイヤー3", "プレイヤー4"],
+    hands: [
+      { id: cryptoId(), label: "東1局", honba: 0, dealerIndex: 0, deltas: [0,0,0,0] }
+    ]
+  };
+}
+
+function cryptoId() {
+  return 'h' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    if (!parsed.players || !parsed.hands) return defaultState();
+    return parsed;
+  } catch (e) {
+    console.error("state load failed", e);
+    return defaultState();
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+
+// ---- 次局のラベル/本場/親 を推測 ----
+function parseLabel(label) {
+  // "東1局" のような文字列から round/num を抽出。失敗したらnull
+  const m = label.match(/^([東南西北])(\d+)局/);
+  if (!m) return null;
+  return { round: m[1], num: parseInt(m[2], 10) };
+}
+
+function suggestNext(mode) {
+  const last = state.hands[state.hands.length - 1];
+  const parsed = parseLabel(last.label) || { round: "東", num: 1 };
+  let { round, num } = parsed;
+  let honba = last.honba;
+  let dealerIndex = last.dealerIndex;
+
+  if (mode === "renchan") {
+    honba += 1;
+    // dealerIndex はそのまま、局番号もそのまま
+  } else {
+    honba = 0;
+    dealerIndex = (last.dealerIndex + 1) % 4;
+    num += 1;
+    if (num > 4) {
+      num = 1;
+      const idx = ROUND_ORDER.indexOf(round);
+      round = ROUND_ORDER[(idx + 1) % ROUND_ORDER.length];
+    }
+  }
+  return { label: `${round}${num}局`, honba, dealerIndex };
+}
+
+// ---- 描画 ----
+function render() {
+  const headerRow = document.getElementById("headerRow");
+  const tableBody = document.getElementById("tableBody");
+  const totalRow = document.getElementById("totalRow");
+
+  // ヘッダー
+  headerRow.innerHTML = '<th class="corner">対局者</th>';
+  state.hands.forEach(hand => {
+    const th = document.createElement("th");
+    th.className = "hand-header";
+    const sum = hand.deltas.reduce((a,b) => a + (Number(b)||0), 0);
+    th.innerHTML = `
+      <input type="text" class="hand-label-input" data-hand="${hand.id}" value="${escapeHtml(hand.label)}">
+      <div class="honba-row">
+        <span>${hand.honba}本場</span>
+        <button class="tiny secondary" data-honba-minus="${hand.id}">-</button>
+        <button class="tiny secondary" data-honba-plus="${hand.id}">+</button>
+      </div>
+      <div class="check-sum ${sum === 0 ? 'ok' : 'ng'}">合計 ${sum === 0 ? '✓ 0' : sum}</div>
+      <button class="tiny danger del-hand-btn" data-del-hand="${hand.id}">削除</button>
+    `;
+    headerRow.appendChild(th);
+  });
+
+  // 本体（4人分の行）
+  tableBody.innerHTML = "";
+  state.players.forEach((name, pIdx) => {
+    const tr = document.createElement("tr");
+    const nameTd = document.createElement("td");
+    nameTd.className = "name-cell";
+    nameTd.innerHTML = `<input type="text" class="name-input" data-player="${pIdx}" value="${escapeHtml(name)}">`;
+    tr.appendChild(nameTd);
+
+    state.hands.forEach(hand => {
+      const td = document.createElement("td");
+      const val = hand.deltas[pIdx] ?? 0;
+      const cls = val > 0 ? "pos" : (val < 0 ? "neg" : "");
+      td.innerHTML = `
+        <div class="cell-inner">
+          <label class="dealer-label">
+            <input type="radio" name="dealer-${hand.id}" ${hand.dealerIndex === pIdx ? "checked" : ""} data-dealer-hand="${hand.id}" data-dealer-player="${pIdx}">
+            親
+          </label>
+          <input type="number" class="score-input ${cls}" step="100" data-score-hand="${hand.id}" data-score-player="${pIdx}" value="${val}">
+        </div>
+      `;
+      tr.appendChild(td);
+    });
+    tableBody.appendChild(tr);
+  });
+
+  // 合計行
+  totalRow.innerHTML = '<td class="name-cell">合計</td>';
+  state.players.forEach((name, pIdx) => {
+    const total = state.hands.reduce((sum, h) => sum + (Number(h.deltas[pIdx]) || 0), 0);
+    const td = document.createElement("td");
+    td.textContent = total;
+    td.style.color = total > 0 ? "var(--plus)" : (total < 0 ? "var(--minus)" : "inherit");
+    totalRow.appendChild(td);
+  });
+
+  attachEvents();
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, s => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[s]));
+}
+
+function attachEvents() {
+  document.querySelectorAll(".name-input").forEach(el => {
+    el.addEventListener("change", e => {
+      const idx = Number(e.target.dataset.player);
+      state.players[idx] = e.target.value || `プレイヤー${idx+1}`;
+      saveState();
+    });
+  });
+
+  document.querySelectorAll(".hand-label-input").forEach(el => {
+    el.addEventListener("change", e => {
+      const hand = state.hands.find(h => h.id === e.target.dataset.hand);
+      hand.label = e.target.value || hand.label;
+      saveState();
+    });
+  });
+
+  document.querySelectorAll("[data-honba-plus]").forEach(el => {
+    el.addEventListener("click", e => {
+      const hand = state.hands.find(h => h.id === e.target.dataset.honbaPlus);
+      hand.honba += 1;
+      saveState(); render();
+    });
+  });
+  document.querySelectorAll("[data-honba-minus]").forEach(el => {
+    el.addEventListener("click", e => {
+      const hand = state.hands.find(h => h.id === e.target.dataset.honbaMinus);
+      hand.honba = Math.max(0, hand.honba - 1);
+      saveState(); render();
+    });
+  });
+
+  document.querySelectorAll("[data-del-hand]").forEach(el => {
+    el.addEventListener("click", e => {
+      if (state.hands.length <= 1) {
+        alert("最後の1局は削除できません。");
+        return;
+      }
+      if (!confirm("この局を削除しますか？")) return;
+      const id = e.target.dataset.delHand;
+      state.hands = state.hands.filter(h => h.id !== id);
+      saveState(); render();
+    });
+  });
+
+  document.querySelectorAll("[data-dealer-hand]").forEach(el => {
+    el.addEventListener("change", e => {
+      const hand = state.hands.find(h => h.id === e.target.dataset.dealerHand);
+      hand.dealerIndex = Number(e.target.dataset.dealerPlayer);
+      saveState();
+    });
+  });
+
+  document.querySelectorAll(".score-input").forEach(el => {
+    el.addEventListener("input", e => {
+      const hand = state.hands.find(h => h.id === e.target.dataset.scoreHand);
+      const pIdx = Number(e.target.dataset.scorePlayer);
+      hand.deltas[pIdx] = e.target.value === "" ? 0 : Number(e.target.value);
+      saveState();
+      render(); // 合計・チェック表示を即時更新（フォーカスは失われるので下でケア）
+    });
+  });
+}
+
+document.getElementById("addHandBtn").addEventListener("click", () => {
+  const mode = document.getElementById("renchanSelect").value;
+  const sug = suggestNext(mode);
+  state.hands.push({
+    id: cryptoId(),
+    label: sug.label,
+    honba: sug.honba,
+    dealerIndex: sug.dealerIndex,
+    deltas: [0,0,0,0]
+  });
+  saveState();
+  render();
+  // 新しい列にスクロール
+  const wrap = document.querySelector(".table-wrap");
+  wrap.scrollLeft = wrap.scrollWidth;
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (!confirm("すべてのデータを初期化します。元に戻せません。よろしいですか？")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = defaultState();
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
